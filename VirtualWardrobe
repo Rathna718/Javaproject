@@ -1,0 +1,159 @@
+package JdbcWard;
+
+import java.sql.*;
+import java.util.Scanner;
+
+public class VirtualWardrobe {
+
+	static final String DB_URL="jdbc:mysql://localhost:3306/project";
+	static final String USER="root";
+	static final String PASS="root";
+	
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            System.out.println("\n==== Virtual Wardrobe Menu ====");
+            System.out.println("1. Add Clothes");
+            System.out.println("2. Create Outfit");
+            System.out.println("3. View Clothes");
+            System.out.println("4. View Outfits");
+            System.out.println("5. Exit");
+            System.out.print("Choose an option: ");
+
+            int option = scanner.nextInt();
+            scanner.nextLine(); // consumes leftover newline
+
+            switch (option) {
+                case 1:
+                    addClothes(scanner);
+                    break;
+                case 2:
+                    createOutfit(scanner);
+                    break;
+                case 3:
+                    viewClothes();
+                    break;
+                case 4:
+                    viewOutfits();
+                    break;
+                case 5:
+                    System.out.println("Exiting...");
+                    return;
+                default:
+                    System.out.println("Invalid option! Try again.");
+            }
+        }
+    }
+
+    private static void addClothes(Scanner scanner) {
+        System.out.print("Enter type (shirt/pants/dress): ");
+        String type = scanner.nextLine();
+
+        System.out.print("Enter color: ");
+        String color = scanner.nextLine();
+
+        System.out.print("Enter brand: ");
+        String brand = scanner.nextLine();
+
+        System.out.print("Enter image URL: ");
+        String imageUrl = scanner.nextLine();
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            String query = "INSERT INTO clothes (type, color, brand, image_url) VALUES (?, ?, ?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(query);
+            pstmt.setString(1, type);
+            pstmt.setString(2, color);
+            pstmt.setString(3, brand);
+            pstmt.setString(4, imageUrl);
+            pstmt.executeUpdate();
+
+            System.out.println("✅ Clothes added successfully!");
+
+        } catch (SQLException e) {
+            System.out.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    private static void createOutfit(Scanner scanner) {
+        System.out.print("Enter outfit name: ");
+        String name = scanner.nextLine();
+
+        System.out.print("Enter description: ");
+        String description = scanner.nextLine();
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            String query = "INSERT INTO outfits (name, description) VALUES (?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            pstmt.setString(1, name);
+            pstmt.setString(2, description);
+            pstmt.executeUpdate();
+
+            ResultSet rs = pstmt.getGeneratedKeys();
+            rs.next();
+            int outfitId = rs.getInt(1);
+
+            System.out.println("✅ Outfit created successfully!");
+            addClothesToOutfit(scanner, outfitId);
+
+        } catch (SQLException e) {
+            System.out.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    private static void addClothesToOutfit(Scanner scanner, int outfitId) {
+        System.out.print("Enter Clothes ID to add to Outfit: ");
+        int clothesId = scanner.nextInt();
+        scanner.nextLine();
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            String query = "INSERT INTO outfit_clothes (outfit_id, clothes_id) VALUES (?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(query);
+            pstmt.setInt(1, outfitId);
+            pstmt.setInt(2, clothesId);
+            pstmt.executeUpdate();
+
+            System.out.println("✅ Clothes added to outfit successfully!");
+
+        } catch (SQLException e) {
+            System.out.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    private static void viewClothes() {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            String query = "SELECT * FROM clothes";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            System.out.println("\n==== List of Clothes ====");
+            while (rs.next()) {
+                System.out.println("ID: " + rs.getInt("id") +
+                        " | Type: " + rs.getString("type") +
+                        " | Color: " + rs.getString("color") +
+                        " | Brand: " + rs.getString("brand"));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    private static void viewOutfits() {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            String query = "SELECT * FROM outfits";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            System.out.println("\n==== List of Outfits ====");
+            while (rs.next()) {
+                System.out.println("ID: " + rs.getInt("id") +
+                        " | Name: " + rs.getString("name") +
+                        " | Description: " + rs.getString("description"));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Database Error: " + e.getMessage());
+        }
+    }
+}
